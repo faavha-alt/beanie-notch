@@ -5,6 +5,7 @@ using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Graphics;
 using Windows.Storage;
@@ -16,18 +17,27 @@ namespace Beanotch.Island;
 // Mac's notch. Files dropped on it go to the Shelf.
 public sealed partial class IslandWindow : Window
 {
-    // Mac points; scaled by Ui.K and then by the monitor's DPI.
-    private const double ClosedHeight = 30, OpenWidth = 680, OpenHeight = 336, TopGap = 6, OpenRadius = 22;
+    // Mac points; scaled by Ui.K and then by the monitor's DPI. TopGap is 0 so the pill sits flush with the work area.
+    private const double ClosedHeight = 30, OpenWidth = 680, OpenHeight = 336, TopGap = 0, OpenRadius = 22;
+    private const int OpenFadeMs = 420, CloseFadeMs = 320, MorphMs = 380;
 
     private readonly Model model;
     private readonly nint hwnd;
     private readonly Grid root = new();
     private readonly ClosedView closed;
     private readonly Shell shell;
-    private readonly DispatcherQueueTimer collapseTimer, tick, statsTimer, dataTimer;
+    private readonly DispatcherQueueTimer collapseTimer, tick, statsTimer, dataTimer, sizeTimer;
     private Notice? notice;
     private DateTime noticeUntil;
     private (int W, int H) placed;
+    private double placedRadius = ClosedHeight / 2;
+    private bool morphing;
+    private DateTime morphStart;
+    private (int W, int H) morphFrom, morphTo;
+    private double radiusFrom, radiusTo;
+    private int morphMs;
+    private Storyboard? closedFade, shellFade;
+    private int fadeToken;
 
     public IslandWindow()
     {
@@ -62,9 +72,13 @@ public sealed partial class IslandWindow : Window
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Beanotch.ico"));
 
         collapseTimer = ui.CreateTimer();
-        collapseTimer.Interval = TimeSpan.FromMilliseconds(600);
+        collapseTimer.Interval = TimeSpan.FromMilliseconds(800);
         collapseTimer.IsRepeating = false;
         collapseTimer.Tick += (_, _) => Collapse();
+        sizeTimer = ui.CreateTimer();
+        sizeTimer.Interval = TimeSpan.FromMilliseconds(16);
+        sizeTimer.IsRepeating = true;
+        sizeTimer.Tick += (_, _) => MorphTick();
         tick = ui.CreateTimer();
         tick.Interval = TimeSpan.FromMilliseconds(400);
         tick.Tick += (_, _) => { model.Tick(); Update(); };
@@ -131,13 +145,25 @@ public sealed partial class IslandWindow : Window
     private void Expand()
     {
         if (model.Expanded) return;
+        collapseTimer.Stop();
         model.Expanded = true;
         model.Stats.Sample();
-        closed.View.Visibility = Visibility.Collapsed;
+        var token = ++fadeToken;
+
+        // Cross-fade while the window grows, so the panel doesn't snap into place.
+        closed.View.Visibility = Visibility.Visible;
+        closed.View.Opacity = 1;
         shell.View.Visibility = Visibility.Visible;
+        shell.View.Opacity = 0;
         root.Background = Theme.Brush(Theme.Background);
         shell.Shown();
-        Place(OpenWidth, OpenHeight, OpenRadius);
+
+        Fade(shell.View, 1, OpenFadeMs, ref shellFade);
+        Fade(closed.View, 0, CloseFadeMs, ref closedFade, () =>
+        {
+            if (token == fadeToken) closed.View.Visibility = Visibility.Collapsed;
+        });
+        Morph(OpenWidth, OpenHeight, OpenRadius, MorphMs);
     }
 
     private void Collapse()
@@ -148,23 +174,95 @@ public sealed partial class IslandWindow : Window
             collapseTimer.Start();
             return;
         }
+        if (!model.Expanded) return;
         model.Expanded = false;
-        shell.View.Visibility = Visibility.Collapsed;
+        var width = closed.Update(notice);
+        var token = ++fadeToken;
+
         closed.View.Visibility = Visibility.Visible;
+        closed.View.Opacity = 0;
+        shell.View.Visibility = Visibility.Visible;
+        shell.View.Opacity = 1;
+        Fade(closed.View, 1, OpenFadeMs, ref closedFade);
+        Fade(shell.View, 0, CloseFadeMs, ref shellFade, () =>
+        {
+            if (token == fadeToken) shell.View.Visibility = Visibility.Collapsed;
+        });
         root.Background = Theme.Brush(Theme.Black);
-        Update();
+        Morph(width, ClosedHeight, ClosedHeight / 2, MorphMs);
     }
 
     // Centred at the top of the work area on the island's screen.
     private void Place(double width, double height, double radius)
     {
+        if (morphing) return;
         var scale = Native.GetDpiForWindow(hwnd) / 96.0 * Ui.Ui.K;
         int w = (int)Math.Round(width * scale), h = (int)Math.Round(height * scale);
         if (placed == (w, h)) return;
-        placed = (w, h);
+        ApplyBounds(w, h, radius);
+    }
+
+    private void Morph(double width, double height, double radius, int ms)
+    {
+        var scale = Native.GetDpiForWindow(hwnd) / 96.0 * Ui.Ui.K;
+        int w = (int)Math.Round(width * scale), h = (int)Math.Round(height * scale);
+        if (!morphing && placed == (w, h))
+        {
+            placedRadius = radius;
+            return;
+        }
+        morphFrom = placed;
+        morphTo = (w, h);
+        radiusFrom = placedRadius;
+        radiusTo = radius;
+        morphStart = DateTime.UtcNow;
+        morphMs = Math.Max(1, ms);
+        morphing = true;
+        sizeTimer.Start();
+        MorphTick();
+    }
+
+    private void MorphTick()
+    {
+        if (!morphing) return;
+        var t = Math.Clamp((DateTime.UtcNow - morphStart).TotalMilliseconds / morphMs, 0, 1);
+        var eased = 1 - Math.Pow(1 - t, 3);
+        int w = (int)Math.Round(morphFrom.W + (morphTo.W - morphFrom.W) * eased);
+        int h = (int)Math.Round(morphFrom.H + (morphTo.H - morphFrom.H) * eased);
+        ApplyBounds(w, h, radiusFrom + (radiusTo - radiusFrom) * eased);
+        if (t < 1) return;
+        morphing = false;
+        sizeTimer.Stop();
+        ApplyBounds(morphTo.W, morphTo.H, radiusTo);
+    }
+
+    private void ApplyBounds(int w, int h, double radius)
+    {
+        var scale = Native.GetDpiForWindow(hwnd) / 96.0 * Ui.Ui.K;
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
-        AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - w) / 2, area.Y + (int)(TopGap * scale), w, h));
+        AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - w) / 2, area.Y + (int)Math.Round(TopGap * scale), w, h));
         Native.Round(hwnd, w, h, (int)Math.Round(radius * scale));
+        placed = (w, h);
+        placedRadius = radius;
+    }
+
+    private void Fade(UIElement element, double to, int ms, ref Storyboard? slot, Action? done = null)
+    {
+        slot?.Stop();
+        var animation = new DoubleAnimation
+        {
+            From = element.Opacity,
+            To = to,
+            Duration = new Duration(TimeSpan.FromMilliseconds(ms)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+        };
+        Storyboard.SetTarget(animation, element);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(animation);
+        if (done is not null) storyboard.Completed += (_, _) => done();
+        slot = storyboard;
+        storyboard.Begin();
     }
 
     private void OnDragOver(object sender, DragEventArgs e)
