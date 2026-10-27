@@ -60,10 +60,29 @@ public static class Uninstaller
             }
         }
         if (app.Location is { Length: > 0 } location && Directory.Exists(location)
+            && IsUnderInstallRoot(location)
             && !LeftoverMatcher.IsProtected(Path.GetFileName(location))
             && !found.Any(f => f.Item1 == location))
             found.Insert(0, (location, FolderSize(location)));
         return found;
+    }
+
+    // A registry InstallLocation is not trusted by itself: only offer it when it really is an install folder.
+    private static bool IsUnderInstallRoot(string path)
+    {
+        var roots = new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
+        };
+        try
+        {
+            var full = Path.GetFullPath(path);
+            return roots.Any(root => root.Length > 0
+                && full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception) { return false; }
     }
 
     // Runs the app's own uninstaller (which asks for permission itself if it needs it).
