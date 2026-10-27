@@ -60,8 +60,7 @@ public sealed class MusicPage(Model model) : PanelPage(model)
         var lyricColumn = Rows(0, (lyrics, 1), (credit, null));
         lyrics.VerticalAlignment = VerticalAlignment.Center;
         credit.HorizontalAlignment = HorizontalAlignment.Right;
-        var divider = new Border { Width = 1, Background = Theme.Brush(Theme.Stroke) };
-        return Card(Columns(18, (player, null), (divider, null), (lyricColumn, 1)), 14, 16);
+        return Card(Columns(24, (player, null), (lyricColumn, 1)), 14, 16);
     }
 
     public override void Refresh()

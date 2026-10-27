@@ -71,11 +71,9 @@ public sealed class HomePage(Model model) : PanelPage(model)
         cleanup.Children.Add(Columns(6, (V(2, Text("Cleanup", 13, weight: FontWeights.SemiBold), Text(subtitle, 9, Theme.Faint)), 1), (free, null)));
         cleanup.Children.Add(CleanRow(Theme.Amber, "Temp & junk", "Reclaimable", "Temp files older than a day",
                                       Format.Bytes(c.TempBytes), "Clean", c.TempBytes > 0, () => _ = c.CleanAsync(CleanKind.Temp)));
-        cleanup.Children.Add(Divider());
         cleanup.Children.Add(CleanRow(Theme.Accent2, "Browser cache", c.FoundBrowsers.Count > 0 ? string.Join(" · ", c.FoundBrowsers.Take(2)) : null,
                                       "Web pages and images saved by browsers", Format.Bytes(c.BrowserBytes), "Clean", c.BrowserBytes > 0,
                                       () => _ = c.CleanAsync(CleanKind.Browser)));
-        cleanup.Children.Add(Divider());
         cleanup.Children.Add(CleanRow(Theme.Red, "Downloads", null, "Open the folder to tidy old installers", null, "Open", true,
                                       () => _ = Windows.System.Launcher.LaunchFolderPathAsync(
                                           Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"))));

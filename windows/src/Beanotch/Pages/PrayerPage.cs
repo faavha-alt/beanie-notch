@@ -72,7 +72,7 @@ public sealed class PrayerPage(Model model) : PanelPage(model)
         var where = V(4, H(5, Icon(Glyphs.Location, 9, Theme.Ink), place), qibla, H(6, picker, methods));
         var right = H(12, dial, where);
 
-        var top = Card(Columns(16, (left, 1), (new Border { Width = 1, Background = Theme.Brush(Theme.Stroke) }, null), (right, null)), 12, 14);
+        var top = Card(Columns(24, (left, 1), (right, null)), 12, 14);
         return Rows(10, (top, null), (tiles, 1));
     }
 

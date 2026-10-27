@@ -20,8 +20,7 @@ public sealed class SettingsPage(Model model, Updater updater) : PanelPage(model
     protected override FrameworkElement Build()
     {
         sections.Width = S(124);
-        var divider = new Border { Width = 1, Background = Theme.Brush(Theme.Stroke) };
-        return Columns(12, (sections, null), (divider, null), (content, 1));
+        return Columns(18, (sections, null), (content, 1));
     }
 
     public override void Refresh()
@@ -72,11 +71,10 @@ public sealed class SettingsPage(Model model, Updater updater) : PanelPage(model
 
     private static Border Group(params UIElement[] rows)
     {
-        var stack = V(0);
-        for (var i = 0; i < rows.Length; i++)
+        var stack = V(2);
+        foreach (var row in rows)
         {
-            if (i > 0) stack.Children.Add(Divider());
-            var wrap = new Border { Child = rows[i], Padding = new Thickness(S(11), S(8), S(11), S(8)) };
+            var wrap = new Border { Child = row, Padding = new Thickness(S(11), S(8), S(11), S(8)) };
             stack.Children.Add(wrap);
         }
         return Card(stack, 0, 12);
