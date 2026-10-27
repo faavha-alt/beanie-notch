@@ -19,12 +19,33 @@ static partial class Native
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
 
-    // Windows 11 otherwise draws a 1px light border around the window region.
-    internal static void RemoveBorder(nint hwnd)
+    [DllImport("gdi32.dll")]
+    private static extern nint CreateSolidBrush(uint color);
+
+    [DllImport("gdi32.dll")]
+    private static extern bool DeleteObject(nint obj);
+
+    [DllImport("user32.dll", EntryPoint = "SetClassLongPtrW")]
+    private static extern nint SetClassLongPtr(nint hwnd, int index, nint value);
+
+    [DllImport("user32.dll")]
+    private static extern bool InvalidateRect(nint hwnd, nint rect, [MarshalAs(UnmanagedType.Bool)] bool erase);
+
+    // Paint the strip Windows leaves outside the XAML surface in the same colour as the island, so no white
+    // hairline shows at the clipped rounded edge.
+    internal static void SetFrame(nint hwnd, uint colorRef)
     {
-        const int DWMWA_BORDER_COLOR = 34;
-        var none = unchecked((int)0xFFFFFFFE); // DWMWA_COLOR_NONE
-        _ = DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref none, sizeof(int));
+        var brush = CreateSolidBrush(colorRef);
+        if (brush != 0)
+        {
+            var old = SetClassLongPtr(hwnd, -10 /* GCLP_HBRBACKGROUND */, brush);
+            if (old != 0) _ = DeleteObject(old);
+        }
+        int border = unchecked((int)colorRef);
+        _ = DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, ref border, sizeof(int));
+        var zero = 0;
+        _ = DwmSetWindowAttribute(hwnd, 37 /* DWMWA_VISIBLE_FRAME_BORDER_THICKNESS */, ref zero, sizeof(int));
+        _ = InvalidateRect(hwnd, 0, true);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]

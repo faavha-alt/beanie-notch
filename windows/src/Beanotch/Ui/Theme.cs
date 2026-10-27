@@ -62,6 +62,8 @@ public static class Theme
     public static Color Ink => Dark ? Rgb(1, 1, 1) : Rgb(0.08, 0.08, 0.08);
     // Charcoal with lighter cards in the dark; a warm off-white with white cards in the light.
     public static Color Background => Dark ? Rgb(0.055, 0.055, 0.063) : Rgb(0.953, 0.953, 0.945);
+    // The closed pill follows the theme instead of staying black in light mode.
+    public static Color Island => Dark ? Black : Rgb(0.97, 0.97, 0.96);
     public static Color Surface => Dark ? Rgb(1, 1, 1, 0.045) : Rgb(1, 1, 1);
     public static Color Stroke => Dark ? Rgb(1, 1, 1, 0.07) : Rgb(0, 0, 0, 0.07);
     public static Color Thumb => Dark ? Rgb(1, 1, 1, 0.14) : Rgb(1, 1, 1);
@@ -73,6 +75,9 @@ public static class Theme
     public static Color WithAlpha(Color c, double alpha) => Color.FromArgb((byte)Math.Round(alpha * 255), c.R, c.G, c.B);
 
     public static Color Level(double value) => value < 0.7 ? Good : value < 0.9 ? Amber : Red;
+
+    // Win32 COLORREF: 0x00BBGGRR.
+    public static uint Ref(Color c) => (uint)(c.R | (c.G << 8) | (c.B << 16));
 
     public static SolidColorBrush Brush(Color c) => new(c);
 }

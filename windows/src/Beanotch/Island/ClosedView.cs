@@ -23,7 +23,7 @@ public sealed class ClosedView
     public ClosedView(Model model)
     {
         this.model = model;
-        left.Foreground = Theme.Brush(Theme.Rgb(1, 1, 1));
+        left.Foreground = Theme.Brush(Theme.Ink);
         level.Width = S(56);
         row = Columns(8, (icon, null), (left, 1), (level, null), (right, null));
         row.Padding = new Thickness(S(13), 0, S(13), 0);
@@ -34,9 +34,9 @@ public sealed class ClosedView
     // Lays out the content and returns the width the island needs, in Mac points.
     public double Update(Notice? notice)
     {
-        var white = Theme.Rgb(1, 1, 1);
+        var ink = Theme.Ink;
         level.Visibility = Visibility.Collapsed;
-        right.Foreground = Theme.Brush(Theme.Rgb(1, 1, 1, 0.7));
+        right.Foreground = Theme.Brush(Theme.WithAlpha(Theme.Ink, 0.55));
 
         if (notice is not null)
         {
@@ -81,7 +81,7 @@ public sealed class ClosedView
         {
             var line = model.Settings.Lyrics ? media.CurrentLine?.Text : null;
             Show(Glyphs.Music, Theme.Accent, string.IsNullOrEmpty(line) ? media.Title : line, "");
-            left.Foreground = Theme.Brush(string.IsNullOrEmpty(line) ? white : Theme.Accent);
+            left.Foreground = Theme.Brush(string.IsNullOrEmpty(line) ? ink : Theme.Accent);
             return 340;
         }
 
@@ -93,8 +93,8 @@ public sealed class ClosedView
             return 230;
         }
 
-        Show(Glyphs.Clock, Theme.Rgb(1, 1, 1, 0.55), DateTime.Now.ToString("ddd d MMM"), DateTime.Now.ToString("HH.mm"));
-        right.Foreground = Theme.Brush(white);
+        Show(Glyphs.Clock, Theme.WithAlpha(Theme.Ink, 0.55), DateTime.Now.ToString("ddd d MMM"), DateTime.Now.ToString("HH.mm"));
+        right.Foreground = Theme.Brush(ink);
         return 190;
     }
 
@@ -105,7 +105,7 @@ public sealed class ClosedView
         icon.Glyph = glyph;
         icon.Foreground = Theme.Brush(color);
         left.Text = text;
-        left.Foreground = Theme.Brush(Theme.Rgb(1, 1, 1));
+        left.Foreground = Theme.Brush(Theme.Ink);
         right.Text = trailing;
         right.Visibility = trailing.Length == 0 ? Visibility.Collapsed : Visibility.Visible;
     }

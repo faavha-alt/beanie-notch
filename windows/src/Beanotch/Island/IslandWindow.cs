@@ -70,7 +70,8 @@ public sealed partial class IslandWindow : Window
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Title = "Beanotch";
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Beanotch.ico"));
-        Native.RemoveBorder(hwnd);
+        Native.SetFrame(hwnd, Theme.Ref(Theme.Island));
+        Activated += (_, _) => Native.SetFrame(hwnd, Theme.Ref(model.Expanded ? Theme.Background : Theme.Island));
 
         collapseTimer = ui.CreateTimer();
         collapseTimer.Interval = TimeSpan.FromMilliseconds(800);
@@ -134,7 +135,8 @@ public sealed partial class IslandWindow : Window
         var systemDark = new UISettings().GetColorValue(UIColorType.Background).R < 128;
         Theme.Apply(model.Settings.Theme, model.Settings.Accent, systemDark);
         root.RequestedTheme = Theme.Dark ? ElementTheme.Dark : ElementTheme.Light;
-        root.Background = Theme.Brush(model.Expanded ? Theme.Background : Theme.Black);
+        root.Background = Theme.Brush(model.Expanded ? Theme.Background : Theme.Island);
+        Native.SetFrame(hwnd, Theme.Ref(model.Expanded ? Theme.Background : Theme.Island));
     }
 
     private void Update()
@@ -162,6 +164,7 @@ public sealed partial class IslandWindow : Window
         shell.View.Visibility = Visibility.Visible;
         shell.View.Opacity = 0;
         root.Background = Theme.Brush(Theme.Background);
+        Native.SetFrame(hwnd, Theme.Ref(Theme.Background));
         shell.Shown();
 
         Fade(shell.View, 1, OpenFadeMs, ref shellFade);
@@ -194,7 +197,8 @@ public sealed partial class IslandWindow : Window
         {
             if (token == fadeToken) shell.View.Visibility = Visibility.Collapsed;
         });
-        root.Background = Theme.Brush(Theme.Black);
+        root.Background = Theme.Brush(Theme.Island);
+        Native.SetFrame(hwnd, Theme.Ref(Theme.Island));
         Morph(width, ClosedHeight, ClosedHeight / 2, MorphMs);
     }
 
