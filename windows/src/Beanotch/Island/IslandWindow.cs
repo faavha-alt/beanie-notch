@@ -70,8 +70,13 @@ public sealed partial class IslandWindow : Window
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Title = "Beanotch";
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Beanotch.ico"));
+        Native.RemoveFrame(hwnd);
         Native.SetFrame(hwnd, Theme.Ref(Theme.Island));
-        Activated += (_, _) => Native.SetFrame(hwnd, Theme.Ref(model.Expanded ? Theme.Background : Theme.Island));
+        Activated += (_, _) =>
+        {
+            Native.RemoveFrame(hwnd);
+            Native.SetFrame(hwnd, Theme.Ref(model.Expanded ? Theme.Background : Theme.Island));
+        };
 
         collapseTimer = ui.CreateTimer();
         collapseTimer.Interval = TimeSpan.FromMilliseconds(800);

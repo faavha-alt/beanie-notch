@@ -25,8 +25,30 @@ static partial class Native
     [DllImport("user32.dll", EntryPoint = "SetClassLongPtrW")]
     private static extern nint SetClassLongPtr(nint hwnd, int index, nint value);
 
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+    private static extern nint GetWindowLongPtr(nint hwnd, int index);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+    private static extern nint SetWindowLongPtr(nint hwnd, int index, nint value);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int cx, int cy, uint flags);
+
     [DllImport("user32.dll")]
     private static extern bool InvalidateRect(nint hwnd, nint rect, [MarshalAs(UnmanagedType.Bool)] bool erase);
+
+    // WinUI 3.6 leaves the standard dialog frame on a borderless, non-resizable window; that is the white 1px line.
+    internal static void RemoveFrame(nint hwnd)
+    {
+        const int GWL_STYLE = -16;
+        const long WS_CAPTION = 0x00C00000, WS_THICKFRAME = 0x00040000;
+        const long WS_BORDER = 0x00800000, WS_DLGFRAME = 0x00400000;
+        var style = GetWindowLongPtr(hwnd, GWL_STYLE).ToInt64();
+        style &= ~(WS_CAPTION | WS_THICKFRAME | WS_BORDER | WS_DLGFRAME);
+        _ = SetWindowLongPtr(hwnd, GWL_STYLE, (nint)style);
+        // SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED
+        _ = SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0020);
+    }
 
     // SetWindowRgn resets the DWM frame attributes, so this is called again after every resize frame.
     internal static void SetBorderColor(nint hwnd, uint colorRef)
