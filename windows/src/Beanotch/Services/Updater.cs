@@ -3,11 +3,14 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
+using Beanotch.Core;
 using Microsoft.Win32;
 
 namespace Beanotch.Services;
 
-public sealed record GitHubAsset([property: JsonPropertyName("name")] string Name, [property: JsonPropertyName("browser_download_url")] string Url);
+public sealed record GitHubAsset([property: JsonPropertyName("name")] string Name,
+                                 [property: JsonPropertyName("browser_download_url")] string Url,
+                                 [property: JsonPropertyName("digest")] string? Digest);
 
 public sealed record GitHubRelease([property: JsonPropertyName("tag_name")] string Tag, [property: JsonPropertyName("html_url")] string Page,
                                    [property: JsonPropertyName("assets")] GitHubAsset[] Assets);
@@ -28,6 +31,7 @@ public sealed class Updater
     public bool Installing { get; private set; }
     public bool Failed { get; private set; }
     private string? download;
+    private string? downloadSha256;
 
     public bool UpdateAvailable => Latest is not null && Newer(Latest, Current);
 
@@ -48,7 +52,11 @@ public sealed class Updater
             var release = releases?.FirstOrDefault(r => r.Assets.Any(a => a.Name == name));
             if (release is null) { Failed = releases is null; return; }
             Latest = release.Tag.Replace("windows-", "").TrimStart('v');
-            download = release.Assets.First(a => a.Name == name).Url;
+            var asset = release.Assets.First(a => a.Name == name);
+            download = IsGitHubReleaseUrl(asset.Url) ? asset.Url : null;
+            downloadSha256 = ReleaseIntegrity.ParseSha256(asset.Digest);
+            // No digest means no verified update: the user can still download it from the release page by hand.
+            if (download is null || downloadSha256 is null) Failed = true;
         }
         catch (Exception) { Failed = true; }
         finally { Checking = false; }
@@ -56,19 +64,34 @@ public sealed class Updater
 
     public async Task InstallAsync()
     {
-        if (download is null || Installing) return;
+        if (download is null || downloadSha256 is null || Installing) return;
         Installing = true;
         try
         {
-            var file = Path.Combine(Path.GetTempPath(), $"Beanotch-Setup-{Latest}.exe");
+            // A fresh name each time, created exclusively: a planted symlink or file can't redirect the download.
+            var file = Path.Combine(Path.GetTempPath(), $"Beanotch-Setup-{Latest}-{Guid.NewGuid():N}.exe");
             await using (var stream = await Http.GetStreamAsync(download))
-            await using (var output = File.Create(file))
+            await using (var output = new FileStream(file, FileMode.CreateNew, FileAccess.Write, FileShare.None))
                 await stream.CopyToAsync(output);
+
+            var actual = await ReleaseIntegrity.Sha256FileAsync(file);
+            if (!ReleaseIntegrity.Matches(downloadSha256, actual))
+            {
+                File.Delete(file);
+                throw new InvalidDataException("The update's SHA-256 does not match the release.");
+            }
+
             Process.Start(new ProcessStartInfo(file, "/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS") { UseShellExecute = true });
             Microsoft.UI.Xaml.Application.Current.Exit();
         }
         catch (Exception) { Installing = false; Failed = true; }
     }
+
+    private static bool IsGitHubReleaseUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps
+        && (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase)
+            || uri.Host.EndsWith(".github.com", StringComparison.OrdinalIgnoreCase));
 
     public static bool Newer(string a, string b)
     {

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Beanotch.Core;
 using Microsoft.Win32;
 
 namespace Beanotch.Services;
@@ -40,8 +41,6 @@ public static class Uninstaller
     public static List<(string Path, long Size)> Leftovers(InstalledApp app)
     {
         var found = new List<(string, long)>();
-        var words = new[] { app.Name, app.Name.Split(' ')[0], app.Publisher.Split(' ').FirstOrDefault() ?? "" }
-            .Where(w => w.Length >= 3).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
         var roots = new[]
         {
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -56,11 +55,13 @@ public static class Uninstaller
             foreach (var dir in dirs)
             {
                 var name = Path.GetFileName(dir);
-                if (words.Any(w => name.Equals(w, StringComparison.OrdinalIgnoreCase)))
+                if (LeftoverMatcher.Matches(name, app.Name))
                     found.Add((dir, FolderSize(dir)));
             }
         }
-        if (app.Location is { Length: > 0 } location && Directory.Exists(location) && !found.Any(f => f.Item1 == location))
+        if (app.Location is { Length: > 0 } location && Directory.Exists(location)
+            && !LeftoverMatcher.IsProtected(Path.GetFileName(location))
+            && !found.Any(f => f.Item1 == location))
             found.Insert(0, (location, FolderSize(location)));
         return found;
     }

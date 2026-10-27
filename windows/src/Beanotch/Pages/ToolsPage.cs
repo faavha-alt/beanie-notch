@@ -24,6 +24,7 @@ public sealed class ToolsPage(Model model) : PanelPage(model)
     private List<(string Path, long Size)>? leftovers;
     private List<LargeFile>? large;
     private bool scanning;
+    private bool confirmCleanup;
     private string query = "";
 
     protected override FrameworkElement Build() => Rows(8, (head, null), (body, 1));
@@ -76,6 +77,7 @@ public sealed class ToolsPage(Model model) : PanelPage(model)
     {
         selected = app;
         leftovers = null;
+        confirmCleanup = false;
         Refresh();
         _ = Task.Run(() => Uninstaller.Leftovers(app)).ContinueWith(t => Dispatch(() =>
         {
@@ -106,10 +108,19 @@ public sealed class ToolsPage(Model model) : PanelPage(model)
                 rows.Children.Add(Columns(8, (Text(Tilde(folder), 9.5, Theme.Dim), 1), (Text(Format.Bytes(size), 9.5, weight: FontWeights.SemiBold, mono: true), null)));
             }
             if (leftovers.Count == 0) rows.Children.Add(Text("No leftover folders found", 9.5, Theme.Faint));
+            else if (confirmCleanup)
+                rows.Children.Add(Text($"Moves all {leftovers.Count} folder(s) above to the Recycle Bin. Check the paths first.",
+                                       9.5, Theme.Red, weight: FontWeights.SemiBold));
         }
         var uninstall = PillButton("Uninstall", Theme.Red, () => Uninstaller.Run(app), Glyphs.Delete);
         var clean = leftovers is { Count: > 0 }
-            ? PillButton("Recycle leftovers", Theme.Accent2, () => { foreach (var (f, _) in leftovers) Uninstaller.Trash(f); Select(app); })
+            ? PillButton(confirmCleanup ? "Confirm recycle" : "Recycle leftovers", confirmCleanup ? Theme.Red : Theme.Accent2, () =>
+            {
+                if (!confirmCleanup) { confirmCleanup = true; Refresh(); return; }
+                foreach (var (f, _) in leftovers) Uninstaller.Trash(f);
+                confirmCleanup = false;
+                Select(app);
+            })
             : null;
         var foot = Columns(8, (Text($"{(leftovers?.Count ?? 0) + 1} items · {Format.Bytes(total)}", 10.5, weight: FontWeights.SemiBold), 1), (clean, null), (uninstall, null));
         return Card(Rows(10, (head, null), (Scroll(rows), 1), (foot, null)), 14, 12);
