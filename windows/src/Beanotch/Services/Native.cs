@@ -22,29 +22,28 @@ static partial class Native
     [DllImport("gdi32.dll")]
     private static extern nint CreateSolidBrush(uint color);
 
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(nint obj);
-
     [DllImport("user32.dll", EntryPoint = "SetClassLongPtrW")]
     private static extern nint SetClassLongPtr(nint hwnd, int index, nint value);
 
     [DllImport("user32.dll")]
     private static extern bool InvalidateRect(nint hwnd, nint rect, [MarshalAs(UnmanagedType.Bool)] bool erase);
 
+    // SetWindowRgn resets the DWM frame attributes, so this is called again after every resize frame.
+    internal static void SetBorderColor(nint hwnd, uint colorRef)
+    {
+        int border = unchecked((int)colorRef);
+        _ = DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, ref border, sizeof(int));
+        var zero = 0;
+        _ = DwmSetWindowAttribute(hwnd, 37 /* DWMWA_VISIBLE_FRAME_BORDER_THICKNESS */, ref zero, sizeof(int));
+    }
+
     // Paint the strip Windows leaves outside the XAML surface in the same colour as the island, so no white
     // hairline shows at the clipped rounded edge.
     internal static void SetFrame(nint hwnd, uint colorRef)
     {
         var brush = CreateSolidBrush(colorRef);
-        if (brush != 0)
-        {
-            var old = SetClassLongPtr(hwnd, -10 /* GCLP_HBRBACKGROUND */, brush);
-            if (old != 0) _ = DeleteObject(old);
-        }
-        int border = unchecked((int)colorRef);
-        _ = DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, ref border, sizeof(int));
-        var zero = 0;
-        _ = DwmSetWindowAttribute(hwnd, 37 /* DWMWA_VISIBLE_FRAME_BORDER_THICKNESS */, ref zero, sizeof(int));
+        if (brush != 0) _ = SetClassLongPtr(hwnd, -10 /* GCLP_HBRBACKGROUND */, brush);
+        SetBorderColor(hwnd, colorRef);
         _ = InvalidateRect(hwnd, 0, true);
     }
 

@@ -252,6 +252,7 @@ public sealed partial class IslandWindow : Window
         var area = DisplayArea.GetFromWindowId(AppWindow.Id, DisplayAreaFallback.Primary).WorkArea;
         AppWindow.MoveAndResize(new RectInt32(area.X + (area.Width - w) / 2, area.Y + (int)Math.Round(TopGap * scale), w, h));
         Native.Round(hwnd, w, h, (int)Math.Round(radius * scale));
+        Native.SetBorderColor(hwnd, Theme.Ref(model.Expanded ? Theme.Background : Theme.Island));
         placed = (w, h);
         placedRadius = radius;
     }
