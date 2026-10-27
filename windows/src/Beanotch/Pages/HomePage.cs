@@ -53,14 +53,8 @@ public sealed class HomePage(Model model) : PanelPage(model)
             var c = cells[i];
             var cell = Stat(c.Label, c.Value, c.Caption, c.Dot);
             cell.Padding = new Thickness(S(12), S(9), S(12), S(9));
-            var border = new Border
-            {
-                Child = cell,
-                BorderBrush = Theme.Brush(Theme.Stroke),
-                BorderThickness = new Thickness(i == 0 ? 0 : 1, 0, 0, 0),
-            };
-            Grid.SetColumn(border, i);
-            strip.Children.Add(border);
+            Grid.SetColumn(cell, i);
+            strip.Children.Add(cell);
         }
     }
 

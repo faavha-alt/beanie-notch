@@ -75,8 +75,6 @@ public sealed class ControlsPage(Model model) : PanelPage(model)
                 Tiles();
             }, on ? Theme.WithAlpha(Theme.Accent, 0.14) : Theme.Surface, 12);
             tile.HorizontalAlignment = HorizontalAlignment.Stretch;
-            tile.BorderThickness = new Thickness(1);
-            tile.BorderBrush = Theme.Brush(on ? Theme.WithAlpha(Theme.Accent, 0.6) : Theme.Stroke);
             tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             Grid.SetColumn(tile, i);
             tiles.Children.Add(tile);

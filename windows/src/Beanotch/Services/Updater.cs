@@ -22,16 +22,19 @@ internal sealed partial class ReleaseJson : JsonSerializerContext;
 // PC's processor and runs it quietly; it closes this copy, replaces it and opens the new one.
 public sealed class Updater
 {
-    private const string Repository = "giankbr/beanie-notch";
+    // OTA channel: releases published by this fork carry the Windows installers.
+    private const string Repository = "faavha-alt/beanie-notch";
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(20) };
 
     public string Current { get; } = Assembly.GetExecutingAssembly().GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "0.0.0";
     public string? Latest { get; private set; }
+    public event Action<string>? Found;
     public bool Checking { get; private set; }
     public bool Installing { get; private set; }
     public bool Failed { get; private set; }
     private string? download;
     private string? downloadSha256;
+    private string? announced;
 
     public bool UpdateAvailable => Latest is not null && Newer(Latest, Current);
 
@@ -57,6 +60,11 @@ public sealed class Updater
             downloadSha256 = ReleaseIntegrity.ParseSha256(asset.Digest);
             // No digest means no verified update: the user can still download it from the release page by hand.
             if (download is null || downloadSha256 is null) Failed = true;
+            if (UpdateAvailable && !Failed && announced != Latest)
+            {
+                announced = Latest;
+                Found?.Invoke(Latest!);
+            }
         }
         catch (Exception) { Failed = true; }
         finally { Checking = false; }

@@ -26,7 +26,7 @@ public sealed partial class IslandWindow : Window
     private readonly Grid root = new();
     private readonly ClosedView closed;
     private readonly Shell shell;
-    private readonly DispatcherQueueTimer collapseTimer, tick, statsTimer, dataTimer, sizeTimer;
+    private readonly DispatcherQueueTimer collapseTimer, tick, statsTimer, dataTimer, sizeTimer, updateTimer;
     private Notice? notice;
     private DateTime noticeUntil;
     private (int W, int H) placed;
@@ -70,6 +70,7 @@ public sealed partial class IslandWindow : Window
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Title = "Beanotch";
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "Beanotch.ico"));
+        Native.RemoveBorder(hwnd);
 
         collapseTimer = ui.CreateTimer();
         collapseTimer.Interval = TimeSpan.FromMilliseconds(800);
@@ -97,11 +98,16 @@ public sealed partial class IslandWindow : Window
         model.Stats.Sample();
         _ = model.Cleaner.ScanAsync();
         _ = model.RefreshDataAsync();
+        model.Updater.Found += version => Show(new Notice(Glyphs.Download, Theme.Accent, "Update available", version, TimeSpan.FromSeconds(8)));
         _ = model.Updater.CheckAsync();
         dataTimer = ui.CreateTimer();
         dataTimer.Interval = TimeSpan.FromMinutes(10);
         dataTimer.Tick += (_, _) => _ = model.RefreshDataAsync();
         dataTimer.Start();
+        updateTimer = ui.CreateTimer();
+        updateTimer.Interval = TimeSpan.FromHours(6);
+        updateTimer.Tick += (_, _) => _ = model.Updater.CheckAsync();
+        updateTimer.Start();
         Update();
 
         if (SnapshotFolder is { } dir)

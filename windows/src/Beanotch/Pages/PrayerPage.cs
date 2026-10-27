@@ -37,9 +37,7 @@ public sealed class PrayerPage(Model model) : PanelPage(model)
             Width = S(56),
             Height = S(56),
             CornerRadius = new CornerRadius(S(28)),
-            BorderBrush = Theme.Brush(Theme.Stroke),
-            BorderThickness = new Thickness(1),
-            Background = Theme.Brush(Theme.WithAlpha(Theme.Ink, 0.03)),
+            Background = Theme.Brush(Theme.WithAlpha(Theme.Ink, 0.06)),
         };
         var north = Text("N", 7, Theme.Faint, FontWeights.SemiBold);
         north.HorizontalAlignment = HorizontalAlignment.Center;
@@ -104,10 +102,7 @@ public sealed class PrayerPage(Model model) : PanelPage(model)
             var tile = Card(body, 10, 12);
             tile.VerticalAlignment = VerticalAlignment.Stretch;
             if (isNext)
-            {
-                tile.Background = Theme.Brush(Theme.WithAlpha(Theme.Accent, 0.12));
-                tile.BorderBrush = Theme.Brush(Theme.Accent);
-            }
+                tile.Background = Theme.Brush(Theme.WithAlpha(Theme.Accent, 0.16));
             tiles.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             Grid.SetColumn(tile, i);
             tiles.Children.Add(tile);

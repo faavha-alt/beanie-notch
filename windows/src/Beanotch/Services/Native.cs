@@ -16,6 +16,17 @@ static partial class Native
     [LibraryImport("kernel32.dll")]
     internal static partial uint SetThreadExecutionState(uint flags);
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(nint hwnd, int attribute, ref int value, int size);
+
+    // Windows 11 otherwise draws a 1px light border around the window region.
+    internal static void RemoveBorder(nint hwnd)
+    {
+        const int DWMWA_BORDER_COLOR = 34;
+        var none = unchecked((int)0xFFFFFFFE); // DWMWA_COLOR_NONE
+        _ = DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, ref none, sizeof(int));
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct FileOperation
     {

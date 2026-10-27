@@ -95,15 +95,13 @@ public static class Ui
         return g;
     }
 
-    // The rounded, hairline-edged card every dashboard block sits on.
+    // The rounded card every dashboard block sits on. No hairline: the surface alone separates it.
     public static Border Card(UIElement child, double padding = 10, double radius = 12) => new()
     {
         Child = child,
         Padding = new Thickness(S(padding)),
         CornerRadius = new CornerRadius(S(radius)),
         Background = Theme.Brush(Theme.Surface),
-        BorderBrush = Theme.Brush(Theme.Stroke),
-        BorderThickness = new Thickness(1),
     };
 
     public static Border Pill(string text, Color color, string? glyph = null, bool dot = false)

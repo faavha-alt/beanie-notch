@@ -39,7 +39,6 @@ public sealed class ShelfPage(Model model) : PanelPage(model)
         {
             var empty = V(6, Center(Icon("", 20, Theme.Faint)), Center(Text("Drop files on the island to keep them handy", 11, Theme.Faint, FontWeights.Medium)));
             var zone = Card(Center(empty), 10, 14);
-            zone.BorderBrush = Theme.Brush(Theme.WithAlpha(Theme.Ink, 0.12));
             body.Children.Add(zone);
             return;
         }
